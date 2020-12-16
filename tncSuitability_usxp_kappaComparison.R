@@ -1,7 +1,5 @@
 rm(list = ls())
 
-start.time =  Sys.time()
-
 #====================================================================================================
 # load required packages, installing any that have not yet been installed
 
@@ -20,6 +18,14 @@ lapply(packages, require, character.only = TRUE)
 
 #====================================================================================================
 
+# Authenticate BOX connection using Client ID and Secret in renviron
+
+# Sys.setenv(BOX_CLIENT_ID = "")
+# Sys.setenv(BOX_CLIENT_SECRET = "")
+
+box_auth()
+
+#====================================================================================================
 
 rComparionsonExp = function(r_observed_exp, r_probable_exp, county){
   
@@ -70,9 +76,11 @@ calcKappa = function(f){
   
 }
 
+#===================================================================================================
 
-setwd("C:/Users/Fred/Downloads")
+start.time =  Sys.time()
 
+# load TNC tillage probability rasters
 probList = list(
   "https://s3.amazonaws.com/TillageModel/tillage/model/Iowa/Iowa_probs.tif",
   "https://s3.amazonaws.com/TillageModel/tillage/model/Minnesota/Minnesota_probs.tif",
@@ -83,13 +91,16 @@ probList = list(
   "https://s3.amazonaws.com/TillageModel/tillage/model/Wyoming/Wyoming_probs.tif"
 )
 
-# # set up for parallel processeing (using future.apply)
-# plan(multisession)
-# 
-# # iterate through the file addresses of each state
-# state_county_stats = future_lapply(probList, function(file){
+# download the usxp s35 mtr raster from BOX
+box_dl(file_id = '752345336503', overwrite = T, file_name = 's35_mtr.tif')
+
+# load the usxp s35 mtr raster (5 land use change classes)
+r_mtr = raster("s35_mtr.tif")
+
+# initialize a list in which to accumulate each state's county stats
 state_county_stats = list()
 
+# iterate through each tillage probability raster
 for(file in probList){
   
   # get the name of the state's tillage probability raster
@@ -99,9 +110,6 @@ for(file in probList){
   
   # load  the tillage probability raster
   r_tp = raster(tp_name)
-  
-  # load the s35 mtr raster (5 land use change classes)
-  r_mtr = raster("s35_mtr.tif")
   
   # get high res census county boundaries
   counties = st_as_sf(counties(state = gsub("[+]", " ",gsub("_probs.tif", "", tp_name)), cb = FALSE, resolution = "500k", year = 2010))
@@ -239,8 +247,6 @@ for(file in probList){
   }
   
   
-  #=================================================================================================
-  
   # get all possible unique column names in countyList
   all_names = unique(unlist(lapply(countyList, function(e) names(e))))
   
@@ -264,12 +270,12 @@ for(file in probList){
 difftime(Sys.time(), start.time, units = "mins")
 
 
-# combine all list elements by matching column names
+#===================================================================================================
 
 # get all possible unique column names in countyList
 all_names = lapply(state_county_stats, function(e) names(e))
 
-state_county_stats = lapply(state_county_stats, function(df) df[,which(colnames(df) != 'Var.27')])
+state_county_stats = lapply(state_county_stats, function(df) df[,which(colnames(df) != 'Var.27')]) # <<<====== need to address
 
 
 # combine all list elements  by row into a data frame by matching column names
@@ -277,6 +283,8 @@ all_county_stats = do.call(rbind.data.frame, lapply(state_county_stats, function
 
 colnames(df) = all_names
 all_county_stats = st_as_sf(do.call(rbind.data.frame, state_county_stats))
+
+#===================================================================================================
 
 ggplot()+
   geom_sf(data = all_county_stats)+
