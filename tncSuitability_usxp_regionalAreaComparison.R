@@ -18,13 +18,9 @@ install.packages(setdiff(packages, rownames(installed.packages())))
 lapply(packages, require, character.only = TRUE)
 
 #====================================================================================================
-
 # Authenticate BOX connection using Client ID and Secret in renviron
 
-Sys.setenv(BOX_CLIENT_ID = "")
-Sys.setenv(BOX_CLIENT_SECRET = "")
-
-box_auth()
+source("box_auth.R")
 
 #====================================================================================================
 
@@ -65,7 +61,7 @@ counties['STATENAME'] = do.call(rbind, strsplit(row.names(counties), '[.]'))[,1]
 #   fun = function(value, cov_frac) sum(ifelse(value == 3, 1,0)*cov_frac)
 # )
 # 
-# # calculate total count of conversion pixels in the region by suming those within each county.
+# # calculate total count of conversion pixels in the region by summing those within each county.
 # # (will be a non-integer because used coverage_fraction in county level calculation)
 # total_nPixels_mtr3 = sum(counties$nPixels_mtr3, na.rm = T)
 
